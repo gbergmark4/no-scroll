@@ -1,0 +1,288 @@
+<h3>2.4.1 Batch Programs</h3>
+<p>As mentioned, a batch program consumes all of its inputs at once and computes the result from these inputs. Its main function may expect the arguments themselves or the names of files from which to retrieve the inputs; similarly, it may just return the output or it may place it in a file.</p>
+
+<p>Once programs are created, we want to use them. In DrRacket, we launch batch programs in the interactions area so that we can watch the program at work.</p>
+
+<p>Programs are even more useful if they can retrieve the input from some file and deliver the output to some other file. The name batch program originated from the early days of computing when a program read an entire file (or several files) and placed the result in some other file(s), without any intervention after the launch. Conceptually, we can think of the program as reading an entire file at once and producing the result file(s) all at once.</p>
+
+<p>We create such file-based batch programs with the "batch-io" teachpack, which adds two functions to our vocabulary (among others):</p>
+<ul>
+  <li>read-file, which reads the content of an entire file as a string, and</li>
+
+  <li>write-file, which creates a file from a given string.</li>
+</ul>
+Before you evaluate these expressions in DrRacket, save the definitions area in a file.
+These functions write strings to files and read strings from them:
+<div class="code"> 
+    (write-file "sample.dat" "212")</br>
+    "sample.dat"</br>
+    > (read-file "sample.dat")</br>
+    "212"</br>
+</div>
+<p>After the first interaction is completed, the file named "sample.dat" contains this text</br>
+  212</br>
+and nothing else. The result of write-file is an acknowledgment that it has placed the string in the file. If the file already exists, it replaces its content with the given string; otherwise, it creates a file and makes the given string its content. The second interaction, (read-file "sample.dat"), produces "212" because it turns the content of "sample.dat" into a string.</p>
+<p>The names 'stdout and 'stdin are short for standard output and input device, respectively.
+For historical and pragmatic reasons, write-file also accepts 'stdout, a special kind of token, as the first argument. It then displays the resulting file content in the current interactions area, for example:</p>
+> (write-file 'stdout "212")
+212
+'stdout
+By analogy, read-file accepts 'stdin in lieu of a file name and then reads input from the current interactions area.
+Let us illustrate the creation of a batch program with a simple example. Suppose we wish to create a program that converts
+This book is not about memorizing facts, but we do expect you to know where to find them. Do you know where to find out how temperatures are converted?
+ a temperature measured on a Fahrenheit thermometer into a Celsius temperature. Don’t worry, this question isn’t a test about your physics knowledge; here is the conversion formula:
+
+
+
+Naturally in this formula f is the Fahrenheit temperature and c is the Celsius temperature. While this formula might be good enough for a pre-algebra text book, a mathematician or a programmer would write c(f) on the left side of the equation to remind readers that f is a given value and c is computed from f.
+
+Translating this into BSL is straightforward:
+
+(define (f2c f)
+  (* 5/9 (- f 32)))
+Recall that 5/9 is a number, a rational fraction to be precise, and more importantly, that c depends on the given f, which is what the function notation expresses.
+
+Launching this batch program in the interactions area works as usual:
+> (f2c 32)
+0
+> (f2c 212)
+100
+> (f2c -40)
+-40
+But suppose we wish to use this function as part of a program that reads the Fahrenheit temperature from a file, converts this number into a Celsius temperature, and then creates another file that contains the result.
+Once we have the conversion formula in BSL, creating the main function means composing f2c with existing primitive functions:
+(define (convert in out)
+  (write-file out
+    (number->string
+      (f2c
+        (string->number
+          (read-file in))))))
+We have called the main function convert, and it consumes two filenames: in for the file where the Fahrenheit temperature is found and out for where we want the Celsius result. A composition of five functions computes convert’s result. Let us step through convert’s body carefully to understand how this works:
+(read-file in) retrieves the content of the file called in as a string;
+
+string->number turns this string into a number;
+
+f2c interprets the number as a Fahrenheit temperature and converts it into a Celsius temperature;
+
+number->string consumes this Celsius temperature and turns it into a string;
+
+and (write-file out ...) places this string into the file named out.
+
+This long list of steps might look overwhelming. The average function composition in a pre-algebra course involves two functions, possibly three. Keep in mind, though, that programs accomplish a real-world purpose while exercises in algebra merely illustrate this idea.
+Since write-file is a way to create files, we can now launch convert:
+You can also create "sample.dat" with a file editor. Just be careful that the editor doesn’t add a newline or any other invisible characters.
+> (write-file "sample.dat" "212")
+"sample.dat"
+> (convert "sample.dat" 'stdout)
+100
+'stdout
+> (convert "sample.dat" "out.dat")
+"out.dat"
+> (read-file "out.dat")
+"100"
+For the first interaction, we use 'stdout so that we can view what convert outputs in DrRacket’s interactions area. For the second one, convert is given the name "out.dat". As expected, the call to convert returns this string; from the description of write-file we also know that it deposited a Fahrenheit temperature in the file. Here we read the content of this file with read-file, but you could also use another text editor to look at the file and to view the result.
+(define (convert in out)
+  (write-file out
+    (number->string
+      (f2c
+        (string->number
+          (read-file in))))))
+ 
+(define (f2c f)
+  (* 5/9 (- f 32)))
+ 
+(convert "sample.dat" "out.dat")
+Figure 6: Converting Fahrenheit temperatures into Celsius
+In addition to running the batch program, it is also instructive to step through the computation. Make sure that the file "sample.dat" exists and contains just a number, then click the STEP button in DrRacket. Doing so opens another window in which you can peruse the computational process that the call to the main function of a batch program triggers. You will see that the process follows the above outline.
+
+Exercise 27. Recall the letter program from Composing Functions. We launched this program once, with the inputs "Matthew", "Fisler", and "Felleisen". Here is how to launch the program and have it write its output to the interactions area:
+> (write-file 'stdout (letter "Matthew" "Fisler" "Felleisen"))
+Dear Matthew,
+ 
+We have discovered that all people with the last name
+Fisler have won our lottery. So, Matthew,
+hurry and pick up your prize.
+ 
+Sincerely,
+ 
+Felleisen
+'stdout
+Of course, programs are useful because you can launch them for many different inputs, and this is true for letter, too. Run letter on three inputs of your choice.
+
+Here is a letter-writing batch program that reads names from three files and writes a letter to one:
+(define (main in-fst in-lst in-signature out)
+  (write-file out
+              (letter (read-file in-fst)
+                      (read-file in-lst)
+                      (read-file in-signature))))
+The function consumes four strings: the first three are the names of input files and the last one serves as output file. It uses the first three to read one string each from the three named files, hands these strings to letter, and eventually writes the result of this function call into the file named by out, the fourth argument to main.
+Create appropriate files, launch main, and check whether it delivers the expected letter.
+
+Note: Once you understand Programming With Lists, you will be able to use other functions from "batch-io", and then you will have no problem writing letters for tens of thousands of lucky lottery winners. 
+
+<h2>2.4.2 Interactive Programs</h2>
+<p>No matter how you look at it, batch programs are old-fashioned. Even if businesses have used them for decades to automate useful tasks, people prefer interactive programs. Indeed, in this day and age, people mostly interact with desktop applications via a keyboard and a mouse generating input events such as key presses or mouse clicks. Furthermore, interactive programs can also react to computer-generated events, for example, clock ticks or the arrival of a message from some other computer.</p>
+
+Exercise 28. Most people no longer use desktop computers to run applications but cell phones, tablets, and their cars’ information control screens. Soon people will use wearable computers in the form of intelligent glasses, clothes, and sports gear. In the somewhat more distant future, people may come with built-in bio computers that directly interact with body functions. Think of ten different forms of events that software applications on such computers will have to deal with. 
+
+This purpose of this section is to introduce the mechanics of writing interactive BSL programs. Because most large example in this book are interactive programs, we introduce the ideas slowly and carefully. You may wish to return to this section when you tackle some of the interactive programming projects; a second or third reading may clarify some of the advance aspects of the mechanics.
+
+By itself, a raw computer is a useless piece of physical equipment. It is called hardware because you can touch it. This equipment becomes useful once you install software, that is, a suite of programs. Usually the first piece of software to be installed on a computer is an operating system. It has the task of managing the computer for you, including connected devices such as the monitor, the keyboard, the mouse, the speakers, and so on. The way it works is that when a user presses a key on the keyboard, the operating system runs a function that processes key strokes. We say that the key stroke is a key event, and the function is an event handler. In the same vein, the operating system the operating system runs an event handler for clock ticks, for mouse actions, and so on. Conversely, after an event handler is done with its work, the operating system may have to change the image on the screen, ring a bell, or print a document. To accomplish these tasks, it also runs functions that translate the operating system’s data into sounds, images, and actions on the printer.
+
+Naturally, different programs have different needs. One program may interpret key strokes as signals to control a nuclear reactor; another passes them to a word processor. To make a general-purpose computer work on these radically different tasks, different programs install different event handlers. That is, a rocket launching program uses one kind of function to deal with clock ticks while an oven’s service functions uses a different kind.
+
+Designing an interactive program requires a way to designate some function as the one that takes care of keyboard events, another function for dealing with clock tick, a third one for presenting some data as an image, and so forth. It is the task of an interactive program’s main function to communicate these designations to the operating system, that is, the software platform on which the program is launched.
+
+DrRacket is a small operating system and BSL, one of its programming languages, comes with the "universe" teachpack, which provides this communication mechanisms. That is, big-bang is your means to install event handlers and functions that translate data into presentable form. A big-bang expression consists of one required subexpression and one required clause. The subexpression evaluates to the initial state of the program, and the required clause tells DrRacket how to render the current state as a program.
+
+Let us understand this idea step-by-step, starting with this function definition:
+(define (number->square s)
+  (square s "solid" "red"))
+The function consumes a positive number and produces solid red square of that size. After clicking RUN, experiment with the function, like this:
+> (number->square 5)
+image
+> (number->square 10)
+image
+> (number->square 20)
+image
+It behaves like a batch program, consuming a number and producing an image, which DrRacket renders for you.
+Now try the following big-bang expression in the interactions area:
+> (big-bang 100 [to-draw number->square])
+A separate window appears, and it displays a 100 x 100 red square. In addition, the DrRacket interactions area does not display another prompt; it is as if the program keeps running and indeed, this is the case. To stop the program, click on DrRacket’s STOP button:
+> (big-bang 100 [to-draw number->square])
+100
+When DrRacket stops the evaluation of a big-bang expression, it returns the current state, which in this case is just the initial state: 100.
+Here is an interesting big-bang expression:
+> (big-bang 100
+            [to-draw number->square]
+            [on-tick sub1]
+            [stop-when zero?])
+This big-bang expression adds two optional clauses to the previous one: the on-tick clause tells DrRacket how to deal with clock ticks and the stop-when clause says when to stop the program. We read it as follows, starting with 100 as the initial state:
+every time the clock ticks, subtract 1 from the current state;
+
+then check whether zero? is true of the new state and if so, stop; and
+
+every time an event handler is finished with its work, use number->square to render the state as an image.
+
+Now hit the return key and observe what happens. Eventually the evaluation of the expressions terminates and DrRacket displays 0.
+Stop! Explain in your own words how the expression is evaluated.
+
+The big-bang expression keeps track of the current state. Initially this state is 100. Every time the clock ticks, it calls the clock tick handler and gets a new state. Hence, the state of big-bang changes as follows:
+100, 99, 98, ..., 2, 1, 0
+
+When the state’s value becomes 0, the evaluation is done. For every other state—from 100 to 1—big-bang translates the state into an image, using number->square as the to-draw clause tells it to. Hence, the window displays a red square that shrinks from 100 x 100 pixels to 1 x 1 pixel over 100 clock ticks.
+Let’s add a clause for dealing with key events. First, we need a function that consumes the current state of the world and a string that describes the key event and that returns a new state:
+(define (reset s ke)
+  100)
+This function throws away its arguments and returns 100, which is the initial state of the big-bang expression we wish to modify. Second, we add an on-key clause to the big-bang expression:
+> (big-bang 100
+            [to-draw number->square]
+            [on-tick sub1]
+            [stop-when zero?]
+            [on-key reset])
+It says to call reset every time a key is pressed.
+Stop! Explain what happens when you evaluate this expression, count to 10, and press "a".
+
+What you will see is that the red square shrinks again, one pixel per clock tick. As soon as you press the "a" key on the keyboard though, the red square re-inflates to full size, because reset is called on the current length of the square and "a" and returns 100. This number becomes big-bang’s new state and number->square renders it as a full-sized red square.
+
+In order to understand the evaluation of big-bang expressions in general, let us look at a schematic one:
+(big-bang cw0
+          (on-tick tock)
+          (on-key ke-h)
+          (on-mouse me-h)
+          (to-draw render)
+          (stop-when end?)
+          ...)
+This big-bang expression specifies three event handlers: tock, ke-h, and me-h. The last one is a mouse event handler, which consumes four inputs—the current world, two coordinates, and a string, which represents the kind of mouse event—and, like the other event handlers, returns a new world.
+The evaluation of this big-bang expression starts with cw0, which is usually an expression. DrRacket, our operating system, installs the value of cw0 as the current state of the world, for short current world. It uses render to translate the current world into an image, which is then displayed in a separate window. Indeed, render is the only means for a big-bang expression to present data to the external world.
+
+Here is how events are processed:
+Every time the clock ticks, DrRacket applies tock to big-bang’s current world and receives a value in response; big-bang treats this return value as the next current world.
+
+Every time a key is pressed, DrRacket applies ke-h to big-bang’s current world and a string that represents the key; for example, pressing the “a” key is represented with "a" and the left arrow key with "left". When ke-h returns a value, big-bang treats it as the next current world.
+
+Every time a mouse enters the window, leaves it, moves, or is pressed, DrRacket applies ke-h to big-bang’s current world, the event’s x and y coordinates, and a string that represents the kind of mouse event that happened; for example, pressing a mouse’s button is represented with "button-down". When me-h returns a value, big-bang treats it as the next current world.
+
+All events are processed in order; if two events seem to happen at the same time, DrRacket acts as a tie-breaker and arranges them in some order.
+After an event is processed, big-bang uses both end? and render to check the current world:
+(end? cw) produces a Boolean value. If it is #t, big-bang stops the computation immediately. Otherwise it proceeds.
+
+(render cw) is expected to produce an image and big-bang displays this image in a separate world.
+
+tick #
+1
+2
+3
+...
+current world
+cw0
+cw1
+cw2
+...
+its image
+(render cw0)
+(render cw1)
+(render cw2)
+...
+on clock tick
+(tock cw0)
+(tock cw1)
+(tock cw2)
+...
+on key stroke
+(ke-h cw0 ...)
+(ke-h cw1 ...)
+(ke-h cw2 ...)
+...
+on mouse event
+(me-h cw0 ...)
+(me-h cw1 ...)
+(me-h cw2 ...)
+...
+Figure 7: How the world works
+The table in figure 7 concisely summarizes this process. In the first row, it specifies the current time: the first clock tick, the second, and so forth. The second row associates the current time with a current world. With render, this series of current worlds is mapped to a series of images, which is displayed in the separate window. The last three rows specify the result of applying tock, ke-h, or me-h to the current world and additional data as needed. Only one of these three expressions is evaluated; no matter which one, its result appears in the next column in row 1 as the next current world.
+
+Let us read this table together. Suppose e1 represents pressing “a”, e2 a clock tick, and e3 a “button down” mouse event taking place at the position (90,100). Then
+cw1 is the result of (ke-h cw0 "a"), i.e., the fourth cell in the e1 column;
+
+cw2 is the result of (tock cw1), i.e., the third cell in the e2 column;
+
+cw3 is the result of (me-h cw3 90 100 "button-down").
+
+We can actually express these three steps as a sequence of three definitions:
+(define cw1 (ke-h cw0 "a"))
+(define cw2 (tock cw1))
+(define cw3 (me-h cw2 "button-down" 90 100))
+And you can now manually determine how big-bang displays each of these three states in its window. Furthermore, we can compute cw3 via a function composition:
+(define cw3 (me-h (tock (ke-h w0 "a"))) 90 100 "button-down")
+
+Event handlers really are functions that consume current worlds and produce them.
+In short, the sequence of events determines in which order you traverse the above tables of possible worlds to arrive at the one and only one current world for each time slot. Note that DrRacket does not touch the current world; it merely safeguards it and passes it to event handlers and other functions when needed.
+
+From here, it is straightforward to define a first interactive program:
+(define (main y)
+  (big-bang y
+            [on-tick sub1]
+            [stop-when zero?]
+            [to-draw place-dot-at]
+            [on-key stop]))
+ 
+(define (place-dot-at y)
+  (place-image (circle 3 "solid" "red") 50 y (empty-scene 100 100)))
+ 
+(define (stop y ke)
+  0)
+The program consists of three functions: a main function launches a big-bang interactive program; place-dot-at translates the current world into an image; and stop throws away its inputs and produces 0.
+After clicking RUN, we can use each of this functions at DrRacket’s interaction prompt to confirm their workings. Let’s start with the last two clauses:
+> (place-dot-at 89)
+image
+> (place-dot-at 22)
+image
+> (stop 89 "q")
+0
+Stop! Try to understand how main reacts when you press a key.
+One way to find out is to launch main:
+> (main 90)
+Press “q” on the keyboard before the square shrinks to a small dot.
+Take a deep breath.
+By now, you may feel that these first two chapters are overwhelming. They introduced so many new concepts, including a new language, its vocabulary, its meaning, its idioms, a tool for writing down texts in this vocabulary, running these so-called “programs,” and the inevitable question of how to create them when presented with a problem statement. To overcome this feeling, the next chapter takes a step back and explains how to design programs systematically from scratch, especially interactive programs. So take a breather and continue when ready.
